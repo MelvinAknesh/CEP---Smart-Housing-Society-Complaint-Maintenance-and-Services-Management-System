@@ -51,7 +51,7 @@ const Dashboard = ({ onNavigate }) => {
     const fetchDashboardData = async () => {
       try {
         const compEndpoint = role === 'ADMIN' ? '/admin/complaints' : '/complaints/my';
-        const servEndpoint = role === 'ADMIN' ? '/admin/services' : '/services/my';
+        const servEndpoint = role === 'ADMIN' ? '/admin/service-requests' : '/service-requests/my';
         const billEndpoint = role === 'ADMIN' ? '/admin/bills' : '/bills/my';
 
         const [compRes, servRes, billRes] = await Promise.all([
