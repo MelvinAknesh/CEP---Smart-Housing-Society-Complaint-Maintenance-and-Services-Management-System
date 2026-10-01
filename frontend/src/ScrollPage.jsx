@@ -272,10 +272,10 @@ const ScrollPage = () => {
           <div className="scroll-footer-inner">
             <div>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Society</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-muted)', marginLeft: '4px' }}>OS</span>
+              
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              © 2024 Housing Society Complaint System
+              © 2026 Housing Society Complaint System. Copyright of this website is on Melvin Aknesh and website build by Melvin Aknesh.
             </span>
           </div>
         </footer>
