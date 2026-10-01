@@ -38,16 +38,98 @@ const Dashboard = ({ onNavigate }) => {
     pendingServices: 0,
     unpaidBills: 0
   });
+  const [activities, setActivities] = useState([]);
+  const [bottomStats, setBottomStats] = useState({
+    resolutionRate: '0%',
+    avgResponse: '24h',
+    activeResidents: '0',
+    pendingDues: '₹0'
+  });
+  const role = localStorage.getItem('role');
 
   useEffect(() => {
-    setStats({ activeComplaints: 3, pendingServices: 1, unpaidBills: 2 });
-  }, []);
+    const fetchDashboardData = async () => {
+      try {
+        const compEndpoint = role === 'ADMIN' ? '/admin/complaints' : '/complaints/my';
+        const servEndpoint = role === 'ADMIN' ? '/admin/services' : '/services/my';
+        const billEndpoint = role === 'ADMIN' ? '/admin/bills' : '/bills/my';
 
-  const activities = [
-    { id: '#CMP-001', type: 'Plumbing Issue', status: 'In Progress', statusType: 'warning', date: 'Oct 24, 2023' },
-    { id: '#SRV-002', type: 'House Cleaning', status: 'Resolved', statusType: 'success', date: 'Oct 25, 2023' },
-    { id: '#CMP-003', type: 'Lift Malfunction', status: 'Open', statusType: 'danger', date: 'Oct 26, 2023' },
-  ];
+        const [compRes, servRes, billRes] = await Promise.all([
+          api.get(compEndpoint).catch(() => ({ data: [] })),
+          api.get(servEndpoint).catch(() => ({ data: [] })),
+          api.get(billEndpoint).catch(() => ({ data: [] }))
+        ]);
+
+        const complaints = compRes.data || [];
+        const services = servRes.data || [];
+        const bills = billRes.data || [];
+
+        const activeC = complaints.filter(c => c.status !== 'RESOLVED' && c.status !== 'CLOSED').length;
+        const pendingS = services.filter(s => s.status !== 'COMPLETED').length;
+        const unpaidB = bills.filter(b => b.status === 'UNPAID').length;
+
+        setStats({
+          activeComplaints: activeC,
+          pendingServices: pendingS,
+          unpaidBills: unpaidB
+        });
+
+        // Compute bottom stats
+        const resolved = complaints.filter(c => c.status === 'RESOLVED' || c.status === 'CLOSED').length;
+        const resRate = complaints.length > 0 ? Math.round((resolved / complaints.length) * 100) : 0;
+        
+        let residentsCount = '150+';
+        if (role === 'ADMIN') {
+          try {
+            const membersRes = await api.get('/admin/approved-members');
+            residentsCount = membersRes.data.filter(m => m.role === 'RESIDENT').length.toString();
+          } catch(e) {}
+        } else {
+          residentsCount = '-';
+        }
+
+        const dues = bills.filter(b => b.status === 'UNPAID').reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+        setBottomStats({
+          resolutionRate: `${resRate}%`,
+          avgResponse: '24h',
+          activeResidents: residentsCount,
+          pendingDues: `₹${dues}`
+        });
+
+        // Merge recent activities
+        const cMap = complaints.map(c => ({
+          id: `CMP-${c.id}`,
+          type: c.title || 'Complaint',
+          status: c.status,
+          statusType: c.status === 'RESOLVED' ? 'success' : c.status === 'PENDING' ? 'danger' : 'warning',
+          date: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+          rawDate: c.createdAt ? new Date(c.createdAt) : new Date(0)
+        }));
+        const sMap = services.map(s => ({
+          id: `SRV-${s.id}`,
+          type: s.title || 'Service',
+          status: s.status,
+          statusType: s.status === 'COMPLETED' ? 'success' : s.status === 'PENDING' ? 'danger' : 'warning',
+          date: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+          rawDate: s.createdAt ? new Date(s.createdAt) : new Date(0)
+        }));
+
+        let combined = [...cMap, ...sMap].sort((a, b) => b.rawDate - a.rawDate).slice(0, 4);
+        if (combined.length === 0) {
+          combined = [
+            { id: '-', type: 'No recent activity', status: 'N/A', statusType: 'neutral', date: '-' }
+          ];
+        }
+        setActivities(combined);
+
+      } catch (err) {
+        console.error('Failed to fetch dashboard data', err);
+      }
+    };
+    
+    fetchDashboardData();
+  }, [role]);
 
   return (
     <div style={{ width: '100%', maxWidth: '1100px' }}>
@@ -73,7 +155,7 @@ const Dashboard = ({ onNavigate }) => {
             </div>
             <div className="stat-card-value">{stats.activeComplaints}</div>
           </div>
-</FadeInSection>
+        </FadeInSection>
 
         <FadeInSection delay={0.2}>
           <div className="stat-card" onClick={() => onNavigate && onNavigate('services', 'PENDING')} style={{ cursor: 'pointer' }}>
@@ -83,7 +165,7 @@ const Dashboard = ({ onNavigate }) => {
             </div>
             <div className="stat-card-value">{stats.pendingServices}</div>
           </div>
-</FadeInSection>
+        </FadeInSection>
 
         <FadeInSection delay={0.3}>
           <div className="stat-card" onClick={() => onNavigate && onNavigate('bills', 'UNPAID')} style={{ cursor: 'pointer' }}>
@@ -93,7 +175,7 @@ const Dashboard = ({ onNavigate }) => {
             </div>
             <div className="stat-card-value">{stats.unpaidBills}</div>
           </div>
-</FadeInSection>
+        </FadeInSection>
       </div>
 
       {/* Activity Table */}
@@ -119,8 +201,8 @@ const Dashboard = ({ onNavigate }) => {
               </tr>
             </thead>
             <tbody>
-              {activities.map((a) => (
-                <tr key={a.id}>
+              {activities.map((a, i) => (
+                <tr key={i}>
                   <td style={{ fontWeight: 500 }}>{a.id}</td>
                   <td style={{ color: 'var(--text-secondary)' }}>{a.type}</td>
                   <td>
@@ -142,30 +224,30 @@ const Dashboard = ({ onNavigate }) => {
             Live — Last updated just now
           </div>
         </div>
-</FadeInSection>
+      </FadeInSection>
 
       {/* Bottom Stats — Marquee-like */}
       <FadeInSection delay={0.2} style={{ marginTop: '4rem' }}>
         <div className="stat-row" style={{ justifyContent: 'space-between' }}>
           <div className="stat-item">
-            <div className="stat-value">99%</div>
+            <div className="stat-value">{bottomStats.resolutionRate}</div>
             <div className="stat-label">Resolution rate</div>
             <div className="stat-source">This quarter</div>
           </div>
           <div className="stat-item">
-            <div className="stat-value">24h</div>
+            <div className="stat-value">{bottomStats.avgResponse}</div>
             <div className="stat-label">Avg. response time</div>
             <div className="stat-source">All complaints</div>
           </div>
           <div className="stat-item">
-            <div className="stat-value">150+</div>
+            <div className="stat-value">{bottomStats.activeResidents}</div>
             <div className="stat-label">Active residents</div>
             <div className="stat-source">Society wide</div>
           </div>
           <div className="stat-item">
-            <div className="stat-value">₹0</div>
+            <div className="stat-value">{bottomStats.pendingDues}</div>
             <div className="stat-label">Pending dues</div>
-            <div className="stat-source">Your account</div>
+            <div className="stat-source">{role === 'ADMIN' ? 'Society total' : 'Your account'}</div>
           </div>
         </div>
       </FadeInSection>
