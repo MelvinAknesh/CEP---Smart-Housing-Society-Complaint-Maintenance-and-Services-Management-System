@@ -76,7 +76,7 @@ const Dashboard = ({ onNavigate }) => {
 
         // Compute bottom stats
         const resolved = complaints.filter(c => c.status === 'RESOLVED' || c.status === 'CLOSED').length;
-        const resRate = complaints.length > 0 ? Math.round((resolved / complaints.length) * 100) : 0;
+        const resRate = 99; // Hardcoded as requested
         
         let residentsCount = '150+';
         if (role === 'ADMIN') {
@@ -231,7 +231,7 @@ const Dashboard = ({ onNavigate }) => {
         <div className="stat-row" style={{ justifyContent: 'space-between' }}>
           <div className="stat-item">
             <div className="stat-value">{bottomStats.resolutionRate}</div>
-            <div className="stat-label">Resolution rate</div>
+            <div className="stat-label">Issue resolution</div>
             <div className="stat-source">This quarter</div>
           </div>
           <div className="stat-item">
