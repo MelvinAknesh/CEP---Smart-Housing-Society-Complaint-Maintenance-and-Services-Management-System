@@ -207,7 +207,7 @@ const Bills = ({ filter, onClearFilter }) => {
                     </div>
                   )}
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Due {b.dueDate} {b.assignedTo && `· Assigned to: ${b.assignedTo}`}
+                    Due {b.dueDate} {localStorage.getItem('role') === 'ADMIN' && b.assignedTo && `· Member: ${b.assignedTo}`}
                   </div>
                 </div>
               </div>

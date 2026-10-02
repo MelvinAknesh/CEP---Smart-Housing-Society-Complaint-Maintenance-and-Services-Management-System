@@ -14,7 +14,7 @@ const sections = [
   { id: 'dashboard', name: 'Dashboard' },
   { id: 'complaints', name: 'Complaints' },
   { id: 'services', name: 'Services' },
-  { id: 'bills', name: 'Bills' },
+  { id: 'bills', name: 'Maintenance & Bills' },
   { id: 'members', name: 'Members' },
   { id: 'feedback', name: 'Feedback' },
 ];
