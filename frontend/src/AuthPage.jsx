@@ -44,7 +44,8 @@ const AuthPage = () => {
         ? { email, password }
         : { email, password, name: fullName, phone, role, flatNumber: roomNo };
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'https://society-backendd.onrender.com';
+      let baseUrl = import.meta.env.VITE_API_URL || 'https://society-backendd.onrender.com';
+      if (baseUrl.endsWith('/api')) baseUrl = baseUrl.substring(0, baseUrl.length - 4);
       const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
