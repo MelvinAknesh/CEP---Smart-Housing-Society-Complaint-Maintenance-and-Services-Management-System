@@ -44,7 +44,8 @@ const AuthPage = () => {
         ? { email, password }
         : { email, password, name: fullName, phone, role, flatNumber: roomNo };
 
-      const response = await fetch(endpoint, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
