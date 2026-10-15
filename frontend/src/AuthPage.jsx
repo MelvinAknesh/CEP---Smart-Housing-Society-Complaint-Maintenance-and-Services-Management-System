@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
-import api from './api';
+import api, { getApiBaseUrl } from './api';
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -13,11 +13,32 @@ const AuthPage = () => {
   const [role, setRole] = useState('RESIDENT');
   const [roomNo, setRoomNo] = useState('');
 
-
-
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Processing...');
   const [success, setSuccess] = useState('');
+
+  // Proactively wake up backend server if it is sleeping on a free hosting tier
+  useEffect(() => {
+    try {
+      const apiBase = getApiBaseUrl();
+      if (apiBase.startsWith('http')) {
+        fetch(`${apiBase}/auth/login`, { method: 'OPTIONS' }).catch(() => {});
+      }
+    } catch (e) {}
+  }, []);
+
+  // Update button text if server takes time to spin up
+  useEffect(() => {
+    let timer;
+    if (loading) {
+      setLoadingMessage('Processing...');
+      timer = setTimeout(() => {
+        setLoadingMessage('Waking up server (takes ~30-60s on free hosting)...');
+      }, 3500);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const toggleMode = (e) => {
     e.preventDefault();
@@ -39,14 +60,13 @@ const AuthPage = () => {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const payload = isLogin
         ? { email, password }
         : { email, password, name: fullName, phone, role, flatNumber: roomNo };
 
-      let baseUrl = import.meta.env.VITE_API_URL || 'https://society-backendd.onrender.com';
-      if (baseUrl.endsWith('/api')) baseUrl = baseUrl.substring(0, baseUrl.length - 4);
-      const response = await fetch(`${baseUrl}${endpoint}`, {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -58,7 +78,7 @@ const AuthPage = () => {
 
       if (!response.ok) {
         if (response.status === 504 || response.status === 502) {
-          throw new Error('Could not reach the server. Ensure the backend is running.');
+          throw new Error('Server is taking too long to respond. The free hosting service might still be waking up. Please retry in 10 seconds.');
         }
         throw new Error((data && (data.message || data.error)) || `Authentication failed: ${response.status}`);
       }
@@ -83,7 +103,15 @@ const AuthPage = () => {
         setPassword('');
       }
     } catch (err) {
-      setError(err.message || 'Server connection failed');
+      if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+        if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+          setError('Could not connect to local backend (http://localhost:8080). Make sure your Spring Boot backend is running.');
+        } else {
+          setError('Could not reach backend server. The free hosting service spins down when inactive and takes ~50-60s to wake up. Please wait 10 seconds and try again.');
+        }
+      } else {
+        setError(err.message || 'Server connection failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -215,7 +243,7 @@ const AuthPage = () => {
               </div>
 
               <button type="submit" className="btn-pill" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '0.85rem 1.5rem', marginTop: '0.5rem' }}>
-                {loading ? 'Processing...' : (isLogin ? 'Sign in →' : 'Create account →')}
+                {loading ? loadingMessage : (isLogin ? 'Sign in →' : 'Create account →')}
               </button>
             </form>
 

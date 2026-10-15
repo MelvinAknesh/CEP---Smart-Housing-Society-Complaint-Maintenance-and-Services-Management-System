@@ -1,7 +1,23 @@
 import axios from 'axios';
 
+export const getApiBaseUrl = () => {
+  let url = import.meta.env.VITE_API_URL;
+  if (!url) {
+    // In local development (npm run dev), use local proxy '/api' to localhost:8080
+    // In production (Vercel), default to the deployed Render backend
+    url = import.meta.env.DEV ? '/api' : 'https://society-backendd.onrender.com/api';
+  }
+  if (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+  if (!url.endsWith('/api') && url.startsWith('http')) {
+    url = `${url}/api`;
+  }
+  return url;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: getApiBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {
