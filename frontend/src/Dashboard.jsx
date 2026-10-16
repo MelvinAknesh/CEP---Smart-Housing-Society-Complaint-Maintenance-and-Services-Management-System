@@ -45,7 +45,7 @@ const Dashboard = ({ onNavigate }) => {
     activeResidents: '0',
     pendingDues: '₹0'
   });
-  const role = localStorage.getItem('role');
+  const role = (localStorage.getItem('role') || '').toUpperCase();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -66,7 +66,13 @@ const Dashboard = ({ onNavigate }) => {
 
         const activeC = complaints.filter(c => c.status !== 'RESOLVED' && c.status !== 'CLOSED').length;
         const pendingS = services.filter(s => s.status !== 'COMPLETED').length;
-        const unpaidB = bills.filter(b => b.status === 'UNPAID').length;
+        
+        const isBillUnpaid = (b) => {
+          if (!b) return false;
+          const s = String(b.status || '').toUpperCase();
+          return s === 'UNPAID' || s === 'PENDING' || (s !== 'PAID' && s !== '');
+        };
+        const unpaidB = bills.filter(isBillUnpaid).length;
 
         setStats({
           activeComplaints: activeC,
@@ -88,13 +94,21 @@ const Dashboard = ({ onNavigate }) => {
           residentsCount = '-';
         }
 
-        const dues = bills.filter(b => b.status === 'UNPAID').reduce((acc, curr) => acc + (curr.amount || 0), 0);
+        const parseAmount = (val) => {
+          if (typeof val === 'number') return val;
+          const parsed = parseFloat(String(val || 0).replace(/[^0-9.-]+/g, ''));
+          return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const dues = bills
+          .filter(isBillUnpaid)
+          .reduce((acc, curr) => acc + parseAmount(curr.amount), 0);
 
         setBottomStats({
           resolutionRate: `${resRate}%`,
           avgResponse: '24h',
           activeResidents: residentsCount,
-          pendingDues: `₹${dues}`
+          pendingDues: `₹${dues.toLocaleString('en-IN')}`
         });
 
         // Merge recent activities
