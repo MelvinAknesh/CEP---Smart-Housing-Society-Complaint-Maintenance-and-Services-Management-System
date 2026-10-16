@@ -32,18 +32,18 @@ A modern, full-stack web application designed to streamline the management of ho
 * Spring Data JPA (Hibernate)
 
 **Database:**
-* MySQL
+* PostgreSQL
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 * Java 17+
 * Node.js (v18+)
-* MySQL Server (running on default port 3306)
+* PostgreSQL (running on default port 5432)
 
 ### Backend Setup
-1. Navigate to the root directory.
-2. Ensure your local MySQL server is running and matches the credentials in `src/main/resources/application.properties`.
+1. Navigate to the `backend` directory.
+2. Ensure your local PostgreSQL server is running and matches the credentials in `src/main/resources/application.properties` (or set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` environment variables).
 3. Run the Spring Boot application:
    ```bash
    mvn spring-boot:run
