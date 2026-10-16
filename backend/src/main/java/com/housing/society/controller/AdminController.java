@@ -60,6 +60,9 @@ public class AdminController {
 
     @PostMapping("/approved-members")
     public ApprovedMember addApproved(@Valid @RequestBody ApprovedMemberRequest r){
+        if(r.phone() == null || !r.phone().matches("^[89]\\d{9}$")){
+            throw new IllegalArgumentException("Phone number must start with 9 or 8 and be exactly 10 digits");
+        }
         User.Role role=User.Role.valueOf(r.role().toUpperCase());
         if(users.findByPhone(r.phone()).isPresent()){
             throw new IllegalArgumentException("Phone already registered to an active member");
@@ -72,6 +75,68 @@ public class AdminController {
         approved.findByEmail(r.email()).ifPresent(a -> approved.delete(a));
         return approved.save(new ApprovedMember(null,r.phone(),r.email(),r.fullName(),role,r.wing(),r.flatNumber(),
             r.specialization(),false,true));
+    }
+
+    @PutMapping("/members/{id}")
+    public Map<String,String> updateMember(@PathVariable String id, @RequestBody Map<String,String> body){
+        String name = body.get("name");
+        String phone = body.get("phone");
+        String wing = body.get("wing");
+        String flatNumber = body.get("flatNumber");
+
+        if(phone != null && !phone.isBlank() && !phone.matches("^[89]\\d{9}$")){
+            throw new IllegalArgumentException("Phone number must start with 9 or 8 and be exactly 10 digits");
+        }
+
+        Long rawId;
+        boolean isPending = id.startsWith("P-");
+        if (id.contains("-")) {
+            rawId = Long.parseLong(id.substring(id.indexOf('-') + 1));
+        } else {
+            rawId = Long.parseLong(id);
+        }
+
+        if(isPending){
+            ApprovedMember a = approved.findById(rawId)
+                .orElseThrow(() -> new IllegalArgumentException("Approved member not found"));
+            if(name != null && !name.isBlank()) a.setFullName(name);
+            if(phone != null && !phone.isBlank()) {
+                if(!phone.equals(a.getPhone()) && (approved.findByPhone(phone).filter(x -> !x.getId().equals(a.getId())).isPresent() || users.findByPhone(phone).isPresent())){
+                    throw new IllegalArgumentException("Phone number already in use");
+                }
+                a.setPhone(phone);
+            }
+            if(wing != null) a.setWing(wing);
+            if(flatNumber != null) a.setFlatNumber(flatNumber);
+            approved.save(a);
+        } else {
+            User u = users.findById(rawId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            String oldPhone = u.getPhone();
+            if(name != null && !name.isBlank()) u.setName(name);
+            if(phone != null && !phone.isBlank()) {
+                if(!phone.equals(u.getPhone()) && (users.findByPhone(phone).filter(x -> !x.getId().equals(u.getId())).isPresent() || approved.findByPhone(phone).filter(ap -> !ap.getEmail().equalsIgnoreCase(u.getEmail())).isPresent())){
+                    throw new IllegalArgumentException("Phone number already in use");
+                }
+                u.setPhone(phone);
+            }
+            users.save(u);
+
+            approved.findByPhone(oldPhone).ifPresent(a -> {
+                if(phone != null && !phone.isBlank()) a.setPhone(phone);
+                if(name != null && !name.isBlank()) a.setFullName(name);
+                approved.save(a);
+            });
+
+            if((id.startsWith("R-") || u.getRole() == User.Role.RESIDENT) && (wing != null || flatNumber != null)){
+                residents.findByUserId(rawId).ifPresent(r -> {
+                    if(wing != null) r.setWing(wing);
+                    if(flatNumber != null) r.setFlatNumber(flatNumber);
+                    residents.save(r);
+                });
+            }
+        }
+        return Map.of("message", "Member updated successfully");
     }
 
     @DeleteMapping("/members/{id}")

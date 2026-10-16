@@ -60,10 +60,17 @@ const AuthPage = () => {
     setLoading(true);
 
     try {
+      if (!isLogin) {
+        const cleanedPhone = phone.replace(/\D/g, '');
+        if (!/^[89]\d{9}$/.test(cleanedPhone)) {
+          throw new Error('Phone number must start with 9 or 8 and be exactly 10 digits.');
+        }
+      }
+
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const payload = isLogin
         ? { email, password }
-        : { email, password, name: fullName, phone, role, flatNumber: roomNo };
+        : { email, password, name: fullName, phone: phone.replace(/\D/g, ''), role, flatNumber: roomNo };
 
       const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}${endpoint}`, {
@@ -196,9 +203,10 @@ const AuthPage = () => {
                     <input
                       type="tel"
                       className="form-input"
-                      placeholder="e.g. 9876543210"
+                      placeholder="e.g. 9820147852"
+                      maxLength={10}
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       required={!isLogin}
                     />
                   </div>

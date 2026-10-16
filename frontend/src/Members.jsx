@@ -142,7 +142,7 @@ const Members = () => {
                       <button className="btn-pill-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', gap: '5px' }} onClick={() => setSelectedMember(m)}>
                       <Eye size={13} /> Details
                     </button>
-                      <button className="btn-pill-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', gap: '5px' }} onClick={() => setEditingMember(m)}>
+                      <button className="btn-pill-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', gap: '5px' }} onClick={() => setEditingMember({ ...m, apiId: m.id })}>
                         <Edit2 size={13} /> Edit
                       </button>
 
@@ -236,9 +236,10 @@ const Members = () => {
                 <input 
                   type="tel"
                   required
-                  placeholder="e.g. +91 9876543210"
+                  maxLength={10}
+                  placeholder="e.g. 9820147852"
                   value={newMemberPhone}
-                  onChange={e => setNewMemberPhone(e.target.value)}
+                  onChange={e => setNewMemberPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   style={{ width: '100%', padding: '0.85rem 1rem', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.95rem', color: '#1a1a1a', outline: 'none', fontFamily: 'inherit' }}
                 />
               </div>
@@ -265,6 +266,11 @@ const Members = () => {
                 onClick={async () => {
                   if (!newMemberName || !newMemberEmail || !newMemberPhone) {
                     alert("Please fill in all required fields.");
+                    return;
+                  }
+                  const cleanedPhone = newMemberPhone.replace(/\D/g, '');
+                  if (!/^[89]\d{9}$/.test(cleanedPhone)) {
+                    alert("Phone number must start with 9 or 8 and be exactly 10 digits.");
                     return;
                   }
                   if (newMemberRole === 'Resident' && !newMemberRoom) {
@@ -368,10 +374,41 @@ const Members = () => {
               </button>
             </div>
             
-            <form onSubmit={(e) => { 
+            <form onSubmit={async (e) => { 
               e.preventDefault(); 
-              setMembers(members.map(m => m.id === editingMember.id ? editingMember : m));
-              setEditingMember(null);
+              const phone = (editingMember.phone || '').replace(/\D/g, '');
+              if (!/^[89]\d{9}$/.test(phone)) {
+                alert('Phone number must start with 9 or 8 and be exactly 10 digits.');
+                return;
+              }
+
+              let wing = null;
+              let flatNumber = null;
+              if (editingMember.role === 'RESIDENT' && editingMember.id) {
+                const parts = editingMember.id.split('-');
+                if (parts.length >= 2) {
+                  wing = parts[0];
+                  flatNumber = parts[1];
+                } else {
+                  flatNumber = editingMember.id;
+                }
+              }
+
+              try {
+                const targetId = editingMember.apiId || editingMember.id;
+                await api.put(`/admin/members/${targetId}`, {
+                  name: editingMember.name,
+                  phone: phone,
+                  wing: wing,
+                  flatNumber: flatNumber
+                });
+                showToast('Member updated successfully!');
+                setEditingMember(null);
+                await fetchMembers();
+              } catch (err) {
+                console.error(err);
+                showToast(err.response?.data?.message || err.response?.data?.error || 'Failed to update member', 'error');
+              }
             }}>
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', fontFamily: 'monospace', fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -414,9 +451,15 @@ const Members = () => {
                 </label>
                 <input 
                   type="tel"
-                  readOnly
-                  value={editingMember.phone}
-                  style={{ width: '100%', padding: '0.85rem 1rem', background: 'rgba(0,0,0,0.05)', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.95rem', color: '#666', outline: 'none', fontFamily: 'inherit', cursor: 'not-allowed' }}
+                  required
+                  maxLength={10}
+                  placeholder="10-digit number starting with 9 or 8"
+                  value={editingMember.phone || ''}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setEditingMember({...editingMember, phone: val});
+                  }}
+                  style={{ width: '100%', padding: '0.85rem 1rem', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.95rem', color: '#1a1a1a', outline: 'none', fontFamily: 'inherit' }}
                 />
               </div>
               <button type="submit" style={{ width: '100%', padding: '0.9rem', background: '#2c303a', color: '#fff', border: 'none', borderRadius: '99px', fontSize: '1rem', fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s', marginTop: '1rem' }} onMouseEnter={(e) => e.target.style.background = '#1a1d24'} onMouseLeave={(e) => e.target.style.background = '#2c303a'}>

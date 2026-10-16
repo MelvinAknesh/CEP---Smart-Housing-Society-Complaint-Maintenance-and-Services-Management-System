@@ -24,6 +24,10 @@ public class AuthService {
         try { role=User.Role.valueOf(r.role().toUpperCase()); }
         catch(Exception e){throw new IllegalArgumentException("Role must be RESIDENT, WORKER or ADMIN");}
 
+        if(r.phone() == null || !r.phone().matches("^[89]\\d{9}$")){
+            throw new IllegalArgumentException("Phone number must start with 9 or 8 and be exactly 10 digits");
+        }
+
         if(users.findByEmail(r.email()).isPresent() || users.findByPhone(r.phone()).isPresent())
             throw new IllegalArgumentException("Email or phone already registered");
 
